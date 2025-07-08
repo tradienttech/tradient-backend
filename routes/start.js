@@ -8,11 +8,22 @@ router.post('/start', async (req, res) => {
 
     const email = body.email;
     const plan = body.plan;
+    const full_name = body.full_name || "N/A";
     const uid = req.body.response_id || body.uid || `uid_${Date.now()}`;
-    const addons = {
-      profit_split: body.profit_split || "60%",
-      payout_weekly: body.payout_weekly === true || body.payout_weekly === "true"
-    };
+
+    let profit_split = "60%";
+
+    if (body["add-ons"]) {
+      const addons = Array.isArray(body["add-ons"])
+        ? body["add-ons"]
+        : [body["add-ons"]];
+
+      addons.forEach((addon) => {
+        if (addon.includes("90%") || addon.includes("profit")) {
+          profit_split = "90%";
+        }
+      });
+    }
 
     if (!email || !plan) {
       return res.status(400).json({
@@ -28,9 +39,9 @@ router.post('/start', async (req, res) => {
         {
           uid,
           email,
+          full_name,
           plan,
-          profit_split: addons.profit_split,
-          payout_weekly: addons.payout_weekly
+          profit_split
         }
       ]);
 
