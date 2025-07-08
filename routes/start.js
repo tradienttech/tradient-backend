@@ -2,8 +2,10 @@ const express = require('express');
 const router = express.Router();
 const { supabase } = require('../supabaseClient');
 
-router.post('/start', async (req, res) => {
+router.post('/', async (req, res) => {
   try {
+    console.log("🔥 Incoming Webhook:", JSON.stringify(req.body, null, 2));
+
     const body = req.body.fields || req.body;
 
     const email = body.email;
