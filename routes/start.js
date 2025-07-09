@@ -2,39 +2,53 @@ const express = require('express');
 const router = express.Router();
 const supabase = require('../supabaseClient');
 
-// Helper to extract field by label
-function getField(fields, label) {
+// Helper: Find a field's value by label
+const getField = (fields, label) => {
   return fields.find(
     (f) => f.label?.trim().toLowerCase() === label.trim().toLowerCase()
   )?.value;
-}
+};
 
 router.post('/start', async (req, res) => {
   try {
     const fields = req.body?.data?.fields;
+
     if (!fields) {
-      return res.status(400).json({ success: false, message: 'Missing required fields', received: req.body });
+      return res.status(400).json({
+        success: false,
+        message: 'Missing fields in request',
+        received: req.body,
+      });
     }
 
-    // Extract values
-    const fullName = getField(fields, 'Full Name');
-    const email = getField(fields, 'Email');
+    // Extract individual values
+    const fullName = getField(fields, 'Full Name') || '';
+    const email = getField(fields, 'Email') || '';
     const total = parseInt(getField(fields, 'Total')) || 0;
 
-    // Plan text from dropdown options
-    const planField = fields.find(f => f.label === 'Plan');
+    // Handle plan (dropdown)
+    const planField = fields.find((f) => f.label === 'Plan');
     const planId = planField?.value?.[0];
-    const plan = planField?.options?.find(opt => opt.id === planId)?.text || 'Unknown';
+    const plan =
+      planField?.options?.find((opt) => opt.id === planId)?.text || 'Unknown';
 
-    // Add-ons from multiple choice
-    const addonsField = fields.find(f => f.label === 'Add-ons (Optional)');
+    // Handle add-ons (multiple choice)
+    const addonsField = fields.find((f) => f.label === 'Add-ons (Optional)');
     const addonIds = addonsField?.value || [];
-    const addons = addonIds.map(id => {
-      const opt = addonsField.options.find(o => o.id === id);
-      return opt?.text || id;
+    const addons = addonIds.map((id) => {
+      const option = addonsField.options.find((opt) => opt.id === id);
+      return option?.text || id;
     });
 
-    // Check if user already exists
+    // Validation
+    if (!email || !plan) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing email or plan in form submission',
+      });
+    }
+
+    // Check if email already exists
     const { data: existing } = await supabase
       .from('challenge_users')
       .select('email')
@@ -51,24 +65,32 @@ router.post('/start', async (req, res) => {
     // Insert into Supabase
     const { error } = await supabase.from('challenge_users').insert([
       {
-        email,
         full_name: fullName,
+        email,
         plan,
         addons,
         total,
-        signup_date: new Date(),
+        signup_date: new Date().toISOString(),
       },
     ]);
 
     if (error) {
-      return res.status(500).json({ success: false, message: 'Supabase error', error });
+      console.error('Supabase insert error:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Supabase insert failed',
+        error: error.message,
+      });
     }
 
-    return res.json({ success: true, message: 'User created successfully' });
-
+    return res.json({ success: true, message: 'User inserted successfully' });
   } catch (err) {
-    console.error('Error in /api/start:', err);
-    return res.status(500).json({ success: false, message: 'Unexpected error', error: err.message });
+    console.error('Fatal error in /api/start:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: err.message,
+    });
   }
 });
 
