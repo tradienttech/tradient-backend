@@ -1,25 +1,32 @@
-require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const dotenv = require('dotenv');
 const startRoute = require('./routes/start');
 
+dotenv.config();
+
 const app = express();
+const port = process.env.PORT || 5000;
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 
-// Health check route (for testing Render deployment)
-app.get('/', (req, res) => {
-  res.send('✅ Tradient backend is live on Render.');
+// 🔥 Logs every request
+app.use((req, res, next) => {
+  console.log(`🔥 Incoming request: ${req.method} ${req.url}`);
+  next();
 });
 
 // Routes
 app.use('/api/start', startRoute);
 
-// Port setup (Render will inject PORT)
-const PORT = process.env.PORT || 5000;
+// Default route (for Render root URL check)
+app.get('/', (req, res) => {
+  res.send('🟢 Tradient backend is running!');
+});
 
-app.listen(PORT, () => {
-  console.log(`✅ Backend running on port ${PORT}`);
+// Start server
+app.listen(port, () => {
+  console.log(`✅ Backend running on port ${port}`);
 });
