@@ -3,10 +3,8 @@ const express = require('express');
 const router = express.Router();
 const supabase = require('../supabaseClient');
 
-// GET /api/stats/:uid
-router.get('/stats/:uid', async (req, res) => {
-  const uid = req.params.uid;
-
+router.get('/stats', async (req, res) => {
+  const uid = req.query.uid;
   if (!uid) {
     return res.status(400).json({ success: false, message: 'UID is required' });
   }
@@ -14,20 +12,13 @@ router.get('/stats/:uid', async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('trades')
-      .select('*')
+      .select('pnl')
       .eq('uid', uid);
 
-    if (error) {
-      return res.status(500).json({ success: false, message: 'Supabase error', error });
-    }
+    if (error) throw error;
 
-    // Aggregate stats
     const totalTrades = data.length;
-    const totalPnl = data.reduce((sum, trade) => sum + (trade.pnl || 0), 0);
-    const winRate =
-      totalTrades > 0
-        ? (data.filter((t) => t.pnl > 0).length / totalTrades) * 100
-        : 0;
+    const totalPnl = data.reduce((acc, trade) => acc + trade.pnl, 0);
 
     return res.json({
       success: true,
@@ -35,11 +26,11 @@ router.get('/stats/:uid', async (req, res) => {
         uid,
         totalTrades,
         totalPnl,
-        winRate: winRate.toFixed(2) + '%',
+        averagePnl: totalTrades > 0 ? totalPnl / totalTrades : 0,
       },
     });
   } catch (err) {
-    return res.status(500).json({ success: false, message: 'Unexpected error', error: err.message });
+    return res.status(500).json({ success: false, message: 'Supabase error', error: err.message });
   }
 });
 
