@@ -20,9 +20,11 @@ app.use((req, res, next) => {
 // Routes
 const startRoute = require('./routes/start');
 const tradeRoute = require('./routes/trade');
+const leaderboardRoute = require('./routes/leaderboard');
 
 app.use('/api', startRoute);
 app.use('/api', tradeRoute);
+app.use('/api', leaderboardRoute);
 
 app.get('/', (req, res) => {
   res.send('🔧 Tradient Backend is Live!');
