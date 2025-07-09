@@ -1,32 +1,21 @@
 const express = require('express');
 const cors = require('cors');
-const dotenv = require('dotenv');
-const startRoute = require('./routes/start');
-
-dotenv.config();
+const startRoute = require('./routes/start'); // ✅ path to start.js
 
 const app = express();
-const port = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5000;
 
-// Middleware
 app.use(cors());
 app.use(express.json());
 
-// 🔥 Logs every request
-app.use((req, res, next) => {
-  console.log(`🔥 Incoming request: ${req.method} ${req.url}`);
-  next();
-});
+// ✅ This must come **before** app.listen
+app.use('/api', startRoute);
 
-// Routes
-app.use('/api/start', startRoute);
-
-// Default route (for Render root URL check)
+// Optional: root route to verify backend is live
 app.get('/', (req, res) => {
-  res.send('🟢 Tradient backend is running!');
+  res.send('Tradient Backend is Live');
 });
 
-// Start server
-app.listen(port, () => {
-  console.log(`✅ Backend running on port ${port}`);
+app.listen(PORT, () => {
+  console.log(`✅ Backend running on port ${PORT}`);
 });
