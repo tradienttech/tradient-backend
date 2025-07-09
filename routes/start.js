@@ -11,10 +11,8 @@ function getField(fields, label) {
 
 router.post('/start', async (req, res) => {
   try {
-    console.log('🔥 Incoming request: POST /api/start');
     const fields = req.body?.data?.fields;
     if (!fields) {
-      console.log('⚠️ Missing fields:', req.body);
       return res.status(400).json({ success: false, message: 'Missing required fields', received: req.body });
     }
 
@@ -36,29 +34,25 @@ router.post('/start', async (req, res) => {
       return opt?.text || id;
     });
 
-    console.log('🚀 Parsed Form Data:', { fullName, email, plan, addons, total });
-
-    // Check for existing user
-    const { data: existing, error: checkError } = await supabase
+    // Check if user already exists
+    const { data: existing } = await supabase
       .from('challenge_users')
       .select('email')
       .eq('email', email)
       .maybeSingle();
 
-    if (checkError) {
-      console.error('⚠️ Error checking existing user:', checkError);
-    }
-
     if (existing) {
-      console.log('⚠️ User already exists:', email);
       return res.json({
         success: false,
         message: 'User already exists with this email',
       });
     }
 
+    // Generate UID (basic version)
+    const uid = `uid_${Date.now()}`;
+
     // Insert into Supabase
-    const { error: insertError } = await supabase.from('challenge_users').insert([
+    const { error } = await supabase.from('challenge_users').insert([
       {
         email,
         full_name: fullName,
@@ -66,19 +60,18 @@ router.post('/start', async (req, res) => {
         addons,
         total,
         signup_date: new Date(),
+        uid
       },
     ]);
 
-    if (insertError) {
-      console.error("❌ Supabase Insert Error:", insertError);
-      return res.status(500).json({ success: false, message: 'Supabase error', error: insertError });
+    if (error) {
+      return res.status(500).json({ success: false, message: 'Supabase error', error });
     }
 
-    console.log("✅ User created successfully:", email);
     return res.json({ success: true, message: 'User created successfully' });
 
   } catch (err) {
-    console.error('❌ Unexpected error in /api/start:', err);
+    console.error('Error in /api/start:', err);
     return res.status(500).json({ success: false, message: 'Unexpected error', error: err.message });
   }
 });
