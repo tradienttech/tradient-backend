@@ -1,23 +1,30 @@
-// routes/trade.js
 const express = require('express');
 const router = express.Router();
 const supabase = require('../supabaseClient');
 
 router.post('/trade', async (req, res) => {
   try {
-    const { uid, symbol, pnl, side, timestamp } = req.body;
+    const { email, trade_type, symbol, entry_price, exit_price, pnl, timestamp } = req.body;
 
-    // Basic validation
-    if (!uid || !symbol || typeof pnl !== 'number' || !side || !timestamp) {
+    // Check required fields
+    if (!email || !trade_type || !symbol || pnl === undefined || !timestamp) {
       return res.status(400).json({ success: false, message: 'Missing required fields' });
     }
 
+    // Insert trade into Supabase
     const { error } = await supabase.from('trades').insert([
-      { uid, symbol, pnl, side, timestamp: new Date(timestamp) }
+      {
+        email,
+        trade_type,
+        symbol,
+        entry_price,
+        exit_price,
+        pnl,
+        timestamp: new Date(timestamp),
+      }
     ]);
 
     if (error) {
-      console.error('Supabase error:', error);
       return res.status(500).json({ success: false, message: 'Supabase error', error });
     }
 
