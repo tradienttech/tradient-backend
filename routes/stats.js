@@ -1,12 +1,18 @@
+// routes/stats.js
 const express = require('express');
 const router = express.Router();
 const supabase = require('../supabaseClient');
 
+// GET /api/stats/:uid
 router.get('/stats/:uid', async (req, res) => {
-  try {
-    const { uid } = req.params;
+  const uid = req.params.uid;
 
-    const { data: trades, error } = await supabase
+  if (!uid) {
+    return res.status(400).json({ success: false, message: 'UID is required' });
+  }
+
+  try {
+    const { data, error } = await supabase
       .from('trades')
       .select('*')
       .eq('uid', uid);
@@ -15,30 +21,25 @@ router.get('/stats/:uid', async (req, res) => {
       return res.status(500).json({ success: false, message: 'Supabase error', error });
     }
 
-    if (!trades || trades.length === 0) {
-      return res.json({ success: true, message: 'No trades yet', stats: null });
-    }
+    // Aggregate stats
+    const totalTrades = data.length;
+    const totalPnl = data.reduce((sum, trade) => sum + (trade.pnl || 0), 0);
+    const winRate =
+      totalTrades > 0
+        ? (data.filter((t) => t.pnl > 0).length / totalTrades) * 100
+        : 0;
 
-    const totalPnl = trades.reduce((sum, t) => sum + (t.pnl || 0), 0);
-    const tradeCount = trades.length;
-    const wins = trades.filter(t => t.pnl > 0).length;
-    const losses = trades.filter(t => t.pnl < 0).length;
-    const winRate = ((wins / tradeCount) * 100).toFixed(2);
-
-    const stats = {
-      uid,
-      totalPnl,
-      tradeCount,
-      wins,
-      losses,
-      winRate: `${winRate}%`
-    };
-
-    res.json({ success: true, stats });
-
+    return res.json({
+      success: true,
+      stats: {
+        uid,
+        totalTrades,
+        totalPnl,
+        winRate: winRate.toFixed(2) + '%',
+      },
+    });
   } catch (err) {
-    console.error('Error in /api/stats:', err);
-    res.status(500).json({ success: false, message: 'Unexpected error', error: err.message });
+    return res.status(500).json({ success: false, message: 'Unexpected error', error: err.message });
   }
 });
 
